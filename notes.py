@@ -1,10 +1,18 @@
 import sys
+import os
 import re
 import time
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+icons_dir = resource_path("icons")
+print(icons_dir)
 
 class mainWindow(QMainWindow):
 
@@ -14,34 +22,38 @@ class mainWindow(QMainWindow):
         super().__init__()
         global flags
         flags = self.windowFlags()
-        self.file = 0
+        self.file = None
         self.initUI()
-        global configs
         configs = self.load_config()
+        print(configs)
         global worker
+        worker = None
         RUN_PATH = "HKEY_CURRENT_USER\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"
         self.settings = QSettings(RUN_PATH, QSettings.NativeFormat)
-        if int(configs[0]) > 0:
-            self.thread = QThread()
-            worker = Worker(int(configs[0]), self.file)
-            worker.moveToThread(self.thread)
-            self.thread.started.connect(worker.run)
-            self.thread.start()
-        else:
-            worker = None
-        if configs[1] == "True":
-            self.settings.setValue("mainWindow",sys.argv[0])
-        else:
-            self.settings.remove("mainWindow")
-        if configs[4] == "True":
-            try:
-                f = open('lastnote.txt', 'r')
-                temp = f.read()
-                Notepad.setText(temp)
-            except Exception as e:
-                print(e)
-        if configs[3] == "True":
-            self.setWindowFlags(flags | Qt.Window | Qt.CustomizeWindowHint | Qt.WindowStaysOnTopHint)
+        try:
+            if int(configs[0]) > 0:
+                self.thread = QThread()
+                worker = Worker(int(configs[0]), self.file)
+                worker.moveToThread(self.thread)
+                self.thread.started.connect(worker.run)
+                self.thread.start()
+            else:
+                worker = None
+            if configs[1] == "True":
+                self.settings.setValue("mainWindow",sys.argv[0])
+            else:
+                self.settings.remove("mainWindow")
+            if configs[4] == "True":
+                try:
+                    f = open('lastnote.txt', 'r')
+                    temp = f.read()
+                    Notepad.setText(temp)
+                except Exception as e:
+                    print(e)
+            if configs[3] == "True":
+                self.setWindowFlags(flags | Qt.Window | Qt.CustomizeWindowHint | Qt.WindowStaysOnTopHint)
+        except Exception as e:
+            print(e)
         self.show()
 
     def initUI(self) -> None:
@@ -49,42 +61,42 @@ class mainWindow(QMainWindow):
         Notepad = QTextEdit()
         self.setCentralWidget(Notepad)
 
-        newAct = QAction(QIcon('./icons/new.ico'), '&New Note', self)
+        newAct = QAction(QIcon(icons_dir+'\\new.ico'), '&New Note', self)
         newAct.setShortcut('Ctrl+N')
         newAct.setStatusTip('Create a new note')
         newAct.triggered.connect(lambda: self.new())
 
-        saveAct = QAction(QIcon('./icons/save.ico'), '&Save Note', self)
+        saveAct = QAction(QIcon(icons_dir+'\save.ico'), '&Save Note', self)
         saveAct.setShortcut('Ctrl+S')
         saveAct.setStatusTip('Save note')
         saveAct.triggered.connect(lambda: self.save())
 
-        saveasAct = QAction(QIcon('./icons/save.ico'), '&Save Note As...', self)
+        saveasAct = QAction(QIcon(icons_dir+'\save.ico'), '&Save Note As...', self)
         saveasAct.setShortcut('Ctrl+Shift+S')
         saveasAct.setStatusTip('Save note as...')
         saveasAct.triggered.connect(lambda: self.save_as())
 
-        exitAct = QAction(QIcon('./icons/exit.ico'), '&Exit', self)
+        exitAct = QAction(QIcon(icons_dir+'\exit.ico'), '&Exit', self)
         exitAct.setShortcut('Ctrl+Q')
         exitAct.setStatusTip('Exit the application')
         exitAct.triggered.connect(qApp.quit)
 
-        configAct = QAction(QIcon('./icons/edit.ico'), '&Preferences', self)
+        configAct = QAction(QIcon(icons_dir+'\edit.ico'), '&Preferences', self)
         configAct.setShortcut('Ctrl+P')
         configAct.setStatusTip('Change application settings')
         configAct.triggered.connect(lambda: self.show_config())
 
-        themeAct = QAction(QIcon('./icons/theme.ico'), '&Theme', self)
+        themeAct = QAction(QIcon(icons_dir+'\\theme.ico'), '&Theme', self)
         themeAct.setShortcut('Ctrl+T')
         themeAct.setStatusTip('Stylize application')
         themeAct.triggered.connect(lambda: self.show_theme())
 
-        helpAct = QAction(QIcon('./icons/help.ico'), '&Help', self)
+        helpAct = QAction(QIcon(icons_dir+'\help.ico'), '&Help', self)
         helpAct.setShortcut('F1')
         helpAct.setStatusTip('Get help')
         helpAct.triggered.connect(lambda: self.show_help())
 
-        aboutAct = QAction(QIcon('./icons/about.ico'), '&About...', self)
+        aboutAct = QAction(QIcon(icons_dir+'\\about.ico'), '&About...', self)
         aboutAct.setShortcut('Ctrl+B')
         aboutAct.setStatusTip('Know more about the application')
         aboutAct.triggered.connect(lambda: self.show_about())
@@ -106,14 +118,13 @@ class mainWindow(QMainWindow):
 
         self.setGeometry(500, 500, 275, 325)
         self.setWindowTitle('001Notes')
-        self.setWindowIcon(QIcon('./icons/main.ico'))
+        self.setWindowIcon(QIcon(icons_dir+'\main.ico'))
 
     def new(self) -> None:
-        if (self.file == None):
-            buttonReply = QMessageBox.question(
-                self, 'Save Note', "Would you like to save your current note?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if buttonReply == QMessageBox.Yes:
-                self.save_as()
+        buttonReply = QMessageBox.question(
+            self, 'Save Note', "Would you like to save your current note?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if buttonReply == QMessageBox.Yes:
+            self.save_as()
         self.setWindowTitle('001Notes - Untitled')
         self.file = None
         Notepad.clear()
@@ -144,6 +155,7 @@ class mainWindow(QMainWindow):
     def show_config(self) -> None:
         self.cfg = configWindow()
         self.cfg.closed.connect(lambda:self.update_config_live())
+        self.cfg.closed.connect(lambda:self.load_config())
 
     def show_theme(self) -> None:
         self.theme = themeWindow()
@@ -186,22 +198,32 @@ class mainWindow(QMainWindow):
         return final
 
     def update_config_live(self) -> None:
-        if worker is not None:
-                worker.update(int(configs[0]), None)
-        if configs[3] == "True":
-            self.setWindowFlags(flags | Qt.Window | Qt.CustomizeWindowHint | Qt.WindowStaysOnTopHint)
-        else:
-            self.setWindowFlags(flags)
-        self.show()
+        configs = self.load_config()
+        try:
+            if worker is not None:
+                    worker.update(int(configs[0]), None)
+            if configs[3] == "True":
+                self.setWindowFlags(flags | Qt.Window | Qt.CustomizeWindowHint | Qt.WindowStaysOnTopHint)
+            else:
+                self.setWindowFlags(flags)
+            self.show()
+        except Exception as e:
+            print(e)
 
     def closeEvent(self, event) -> None:
-        if configs[2] == "True":
-            self.setWindowFlags(self.windowFlags() | Qt.Tool)
-            self.show()
-            self.setFocus()
-            self.minimize.emit()
-            event.ignore()
-        else: 
+        configs = self.load_config()
+
+        try:
+            if configs[2] == "True":
+                self.setWindowFlags(self.windowFlags() | Qt.Tool)
+                self.show()
+                self.setFocus()
+                self.minimize.emit()
+                event.ignore()
+            else: 
+                event.accept()
+        except Exception as e:
+            print(e)
             event.accept()
 
 
@@ -252,6 +274,8 @@ class configWindow(QWidget):
 
     def initUI(self):
 
+        configs = self.load_config()
+
         autosave = QLabel()
         autosave.setText("Autosave Interval:\n(set 0 to disable autosaving)")
         self.autosaveField = QSpinBox()
@@ -291,7 +315,7 @@ class configWindow(QWidget):
 
         self.setLayout(grid)
         self.setWindowTitle('001Notes Settings')
-        self.setWindowIcon(QIcon('./icons/edit.ico'))
+        self.setWindowIcon(QIcon(icons_dir+'\edit.ico'))
         
     def save_changes(self) -> None:
         try:
@@ -334,10 +358,10 @@ class themeWindow(QWidget):
 
     def initUI(self) -> None:
         CPLabel = QLabel()
-        CPLabel.setText("Select background color:")
+        CPLabel.setText("Select font color:")
         self.bgcolorPreview = ColorButton()
         FCLabel = QLabel()
-        FCLabel.setText("Select font color:")
+        FCLabel.setText("Select background color:")
         self.fcolorPreview = ColorButton()
         self.fontButton = QPushButton("Font")
         self.fontButton.clicked.connect(lambda: self.chooseFont())
@@ -359,7 +383,7 @@ class themeWindow(QWidget):
 
         self.setLayout(grid)
         self.setWindowTitle('001Notes Theme')
-        self.setWindowIcon(QIcon('./icons/theme.ico'))
+        self.setWindowIcon(QIcon(icons_dir+'\theme.ico'))
         self.show()
 
     def chooseFont(self) -> None:
@@ -381,6 +405,7 @@ class themeWindow(QWidget):
             Notepad.setStyleSheet("background-color: %s" % self.fcolorPreview.color())
         except Exception as e:
             print(e)
+        self.close()
 
     def load_theme(self) -> None:
         try:
@@ -443,7 +468,7 @@ class helpWindow(QWidget):
 
         self.setLayout(grid)
         self.setWindowTitle('001Notes Help')
-        self.setWindowIcon(QIcon('./icons/help.ico'))
+        self.setWindowIcon(QIcon(icons_dir+'\help.ico'))
 
     def show_info(self) -> None:
         index = self.treeView.currentIndex()
@@ -540,7 +565,7 @@ def main() -> None:
     app.aboutToQuit.connect(lambda:mw.safe_save())
 
     tray = QSystemTrayIcon()
-    tray.setIcon(QIcon('./icons/main.ico'))
+    tray.setIcon(QIcon(icons_dir+'\main.ico'))
     mw.minimize.connect(lambda:tray.setVisible(True))
     
     menu = QMenu()
